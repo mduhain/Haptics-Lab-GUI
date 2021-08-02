@@ -17,20 +17,26 @@
 // Input these as single characters into the serial input (top right corner)
 //  "1" = moves motor 1 forward one step
 //  "2" = moves motor 1 reverse one step.
-//  "3" = moves motor 1 home.
+//  "3" = moves motor 1 home.c
 //  "q" = moves motor 2 forward one step.
 //  "w" = moves motor 2 reverse one step.
 //  "e" = moves motor 2 home.
 //  "h" = moves both motors home.
+//  "s" = increases step size
+//  "a" = decreases step size
 //
 // <@mduhain July 28th, 2021>
 //  + fixed a bug where multiple rewards were being delivered from one signal.
 //  + fixed a bug where reward values were not being updated properly.
 //
+// <@mduhain Aug 2nd, 2021>
+//  + major change to logic of how step sizes are handled. Now processed in microsteps of 1.
+//  + added keyboard input to increase and decrease step size while debugging.
+//
 //-------------------------------------------------------------------------------------------------
 
 // STEP (REWARD) SIZE
-int step_size = 6;
+int step_size = 4;
 
 //IMPORT LIBRARIES
 #include <Servo.h>
@@ -60,6 +66,7 @@ int forwardValue2 = 0; //flag for M2 forward motion
 int reverseValue2 = 0; //flag for M2 reverse motion
 int code0_val = 0; //flag for binary reward size code
 int code1_val = 0; //flag for binary reward size code
+int small = 0; //test variable
 
 
 //===================================================================================================
@@ -88,7 +95,7 @@ void loop() {
   code1_val     = digitalRead(PIN_code1);
 
 
-  //----------------------------------------------------------
+  //--------------------------------------------------------------
   // ENCODING NEW REWARD VALUE
     if (code0_val == 0 && code1_val == 1){
       //Increase step size by 1
@@ -106,128 +113,169 @@ void loop() {
     }
 
 
-  
-  //------------------------------------------------------
+  //--------------------------------------------------------------
   //SERIAL INPUT FOR MANUAL OVERRIDE
   if(Serial.available() > 0){
     char ctrl = Serial.read();
+    
     if (ctrl == '1'){
-      //one
       Serial.println("Motor 1 forward...");
-      new_step_1 = current_step_1 + (step_size/2);
+      small = step_size;
+      //don't ask why... it just works...
+      while (small > 0) {
+        new_step_1 = current_step_1 + 1;
+        motor1.writeMicroseconds(new_step_1);
+        current_step_1 = new_step_1;
+        small = small - 1;
+        delay(150);
+      }
       Serial.println(new_step_1);
-      motor1.writeMicroseconds(new_step_1);
-      current_step_1 = new_step_1;
-      delay(100);
-      //two
-      Serial.println("Motor 1 forward...");
-      new_step_1 = current_step_1 + (step_size/2);
-      Serial.println(new_step_1);
-      motor1.writeMicroseconds(new_step_1);
-      current_step_1 = new_step_1;
       delay(500);
-    } 
+    }
+     
     else if (ctrl == '2'){
-      //one
-      Serial.println("Motor 1 Retracting...");
-      new_step_1 = current_step_1 - (step_size/2);
+      Serial.println("Motor 1 reverse...");
+      small = step_size;
+      while (small > 0) {
+        new_step_1 = current_step_1 - 1;
+        motor1.writeMicroseconds(new_step_1);
+        current_step_1 = new_step_1;
+        small = small - 1;
+        delay(150);
+      }
       Serial.println(new_step_1);
-      motor1.writeMicroseconds(new_step_1);
-      current_step_1 = new_step_1;
-      delay(100);
-      //two
-      Serial.println("Motor 1 Retracting...");
-      new_step_1 = current_step_1 - (step_size/2);
-      Serial.println(new_step_1);
-      motor1.writeMicroseconds(new_step_1);
-      current_step_1 = new_step_1;
       delay(500);
-    }          
+    }    
+          
     else if (ctrl == '3'){
       Serial.println("Motor 1 Returning Home...");
       motor1.writeMicroseconds(step_home);
       current_step_1 = step_home;
     }
+    
     else if (ctrl == 'q'){
       Serial.println("Motor 2 forward...");
-      new_step_2 = current_step_2 + step_size;
+      small = step_size;
+      while (small > 0) {
+        new_step_2 = current_step_2 + 1;
+        motor2.writeMicroseconds(new_step_2);
+        current_step_2 = new_step_2;
+        small = small - 1;
+        delay(150);
+      }
       Serial.println(new_step_2);
-      motor2.writeMicroseconds(new_step_2);
-      current_step_2 = new_step_2;
+      delay(500);
     } 
+    
     else if (ctrl == 'w'){
-      Serial.println("Motor 2 Retracting...");
-      new_step_2 = current_step_2 - step_size;
+      Serial.println("Motor 2 reverse...");
+      small = step_size;
+      while (small > 0) {
+        new_step_2 = current_step_2 - 1;
+        motor2.writeMicroseconds(new_step_2);
+        current_step_2 = new_step_2;
+        small = small - 1;
+        delay(150);
+      }
       Serial.println(new_step_2);
-      motor2.writeMicroseconds(new_step_2);
-      current_step_2 = new_step_2;
-    }          
+      delay(500);
+    }  
+            
     else if (ctrl == 'e'){
       Serial.println("Motor 2 Returning Home...");
       motor2.writeMicroseconds(step_home);
       current_step_2 = step_home;
     }
-    else if (ctrl == "h"){
+    
+    else if (ctrl == 'h'){
       Serial.println("All Motors Home...");
       motor1.writeMicroseconds(step_home);
       motor2.writeMicroseconds(step_home);
       current_step_1 = step_home;
       current_step_2 = step_home;
     }
+    
+    else if (ctrl == 'g'){
+      Serial.println("All Motors GOIN'...");
+      motor1.writeMicroseconds(2000);
+      motor2.writeMicroseconds(2000);
+      current_step_1 = 2000;
+      current_step_2 = 2000;
+    }
+    
+    else if (ctrl == 's'){
+      //Increase step size by 1
+      step_size = step_size + 1;
+      Serial.println("Increasing Step Size...");
+      Serial.println(step_size);
+      delay(15);
+    }
+    
+    else if (ctrl == 'a'){
+      //Decrease step size by 1
+      step_size = step_size - 1;
+      Serial.println("Decreasing step size...");
+      Serial.println(step_size);
+      delay(15);
+    }
   }
 
   
-  //------------------------------------------------------------
+  //-----------------------------------------------------------------
   // GPIO MOTOR 1 CONTROL
   if (forwardValue1 == 1 && reverseValue1 == 0) {
-    //one
     Serial.println("Motor 1 forward...");
-    new_step_1 = current_step_1 + (step_size/2);
+    small = step_size;
+    while (small > 0) {
+      new_step_1 = current_step_1 + 1;
+      motor1.writeMicroseconds(new_step_1);
+      current_step_1 = new_step_1;
+      small = small - 1;
+      delay(150);
+    }
     Serial.println(new_step_1);
-    motor1.writeMicroseconds(new_step_1);
-    current_step_1 = new_step_1;
-    delay(100);
-    //two
-    Serial.println("Motor 1 forward...");
-    new_step_1 = current_step_1 + (step_size/2);
-    Serial.println(new_step_1);
-    motor1.writeMicroseconds(new_step_1);
-    current_step_1 = new_step_1;
     delay(500);
   }
   if (forwardValue1 == 0 && reverseValue1 == 1) {
-    //one
-    Serial.println("Motor 1 Retracting...");
-    new_step_1 = current_step_1 - (step_size/2);
+    Serial.println("Motor 1 reverse...");
+    small = step_size;
+    while (small > 0) {
+      new_step_1 = current_step_1 - 1;
+      motor1.writeMicroseconds(new_step_1);
+      current_step_1 = new_step_1;
+      small = small - 1;
+      delay(150);
+    }
     Serial.println(new_step_1);
-    motor1.writeMicroseconds(new_step_1);
-    current_step_1 = new_step_1;
-    delay(100);
-    //two
-    Serial.println("Motor 1 Retracting...");
-    new_step_1 = current_step_1 - (step_size/2);
-    Serial.println(new_step_1);
-    motor1.writeMicroseconds(new_step_1);
-    current_step_1 = new_step_1;
     delay(500);
   }
 
-  //------------------------------------------------------------
+  //-----------------------------------------------------------------
   // GPIO MOTOR 2 CONTROL
   if (forwardValue2 == 1 && reverseValue2 == 0) {
     Serial.println("Motor 2 forward...");
-    new_step_2 = current_step_2 + step_size;
+    small = step_size;
+    while (small > 0) {
+      new_step_2 = current_step_2 + 1;
+      motor2.writeMicroseconds(new_step_2);
+      current_step_2 = new_step_2;
+      small = small - 1;
+      delay(150);
+    }
     Serial.println(new_step_2);
-    motor2.writeMicroseconds(new_step_2);
-    current_step_2 = new_step_2;
     delay(500);
   }
   if (forwardValue2 == 0 && reverseValue2 == 1) {
-    Serial.println("Motor 2 Retracting...");
-    new_step_2 = current_step_2 - step_size;
+    Serial.println("Motor 2 reverse...");
+    small = step_size;
+    while (small > 0) {
+      new_step_2 = current_step_2 - 1;
+      motor1.writeMicroseconds(new_step_2);
+      current_step_2 = new_step_2;
+      small = small - 1;
+      delay(150);
+    }
     Serial.println(new_step_2);
-    motor2.writeMicroseconds(new_step_2);
-    current_step_2 = new_step_2;
     delay(500);
   }
 
